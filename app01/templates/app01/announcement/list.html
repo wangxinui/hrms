@@ -1,0 +1,67 @@
+{% extends 'app01/base.html' %}
+{% load perm_tags %}
+{% block page_title %}公告管理{% endblock %}
+{% block breadcrumb %}<li class="active">公告</li>{% endblock %}
+{% block crumb_name %}公告列表{% endblock %}
+
+{% block content %}
+{% can 'announcement_add' as can_add %}
+{% can 'announcement_edit' as can_edit %}
+{% can 'announcement_delete' as can_delete %}
+<div class="page-ann">
+
+  {% include 'app01/partials/_kpi_cards.html' with kpis=kpis %}
+
+  <div class="ann-toolbar">
+    <form method="get" class="form-inline ann-toolbar-form">
+      <div class="ann-toolbar-group">
+        <i class="fa fa-search ann-toolbar-icon"></i>
+        <input type="text" name="kw" class="form-control input-sm em-control" placeholder="搜索标题/内容" value="{{ kw }}">
+      </div>
+      <button class="btn btn-primary btn-sm"><i class="fa fa-search"></i> 查询</button>
+      {% if kw %}<a href="{% url 'ann_list' %}" class="btn btn-default btn-sm"><i class="fa fa-times"></i> 清空</a>{% endif %}
+    </form>
+    {% if can_add %}
+    <a href="{% url 'ann_add' %}" class="btn btn-primary"><i class="fa fa-plus"></i> 发布公告</a>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <div class="box-body">
+      <table class="table table-hover ann-table">
+        <thead>
+          <tr><th style="width:56px;">ID</th><th>标题</th><th>发布人</th><th>发布时间</th><th style="width:80px;">置顶</th><th style="width:240px;">操作</th></tr>
+        </thead>
+        <tbody>
+          {% for a in pagination.object_list %}
+          <tr>
+            <td class="text-muted">{{ a.id }}</td>
+            <td>
+              {% if a.is_top %}<span class="label label-danger">置顶</span>{% endif %}
+              <strong>{{ a.title }}</strong>
+            </td>
+            <td>{{ a.publisher.username|default:"-" }}</td>
+            <td class="text-muted">{{ a.created_at|date:"Y-m-d H:i" }}</td>
+            <td>
+              {% if a.is_top %}<span class="label label-success">是</span>
+              {% else %}<span class="label label-default">否</span>{% endif %}
+            </td>
+            <td>
+              {% if can_edit %}
+              <a href="{% url 'ann_toggle_top' a.id %}" class="btn btn-xs btn-warning">{% if a.is_top %}取消置顶{% else %}置顶{% endif %}</a>
+              <a href="{% url 'ann_edit' a.id %}" class="btn btn-xs btn-info">编辑</a>
+              {% endif %}
+              {% if can_delete %}<a href="{% url 'ann_delete' a.id %}" class="btn btn-xs btn-danger" onclick="return confirm('确定删除？')">删除</a>{% endif %}
+              {% if not can_edit and not can_delete %}<span class="text-muted">只读</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted">暂无数据</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {{ pagination.html }}
+    </div>
+  </div>
+</div>
+{% endblock %}

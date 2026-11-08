@@ -1,0 +1,76 @@
+{% extends 'app01/base.html' %}
+{% load perm_tags %}
+{% block page_title %}考勤管理{% endblock %}
+{% block breadcrumb %}<li class="active">考勤</li>{% endblock %}
+{% block crumb_name %}考勤列表{% endblock %}
+
+{% block content %}
+{% can 'attendance_add' as can_add %}
+{% can 'attendance_edit' as can_edit %}
+{% can 'attendance_delete' as can_delete %}
+<div class="page-att">
+
+  {% include 'app01/partials/_kpi_cards.html' with kpis=kpis %}
+
+  <div class="att-toolbar">
+    <form method="get" class="form-inline att-toolbar-form">
+      <div class="att-toolbar-group">
+        <i class="fa fa-user att-toolbar-icon"></i>
+        <select name="emp" class="form-control input-sm em-control" style="width:160px;">
+          <option value="">全部员工</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}" {% if emp_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="att-toolbar-group">
+        <input type="date" name="date_from" class="form-control input-sm" value="{{ date_from }}">
+      </div>
+      <span class="text-muted">至</span>
+      <div class="att-toolbar-group">
+        <input type="date" name="date_to" class="form-control input-sm" value="{{ date_to }}">
+      </div>
+      <button class="btn btn-primary btn-sm"><i class="fa fa-search"></i> 查询</button>
+    </form>
+    {% if can_add %}
+    <a href="{% url 'att_add' %}" class="btn btn-primary"><i class="fa fa-plus"></i> 新增考勤</a>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <div class="box-body">
+      <table class="table table-hover att-table">
+        <thead>
+          <tr><th>日期</th><th>员工</th><th>部门</th><th>上班</th><th>下班</th><th style="width:100px;">状态</th><th>备注</th><th style="width:150px;">操作</th></tr>
+        </thead>
+        <tbody>
+          {% for a in pagination.object_list %}
+          <tr>
+            <td>{{ a.date }}</td>
+            <td>{{ a.employee.name }}</td>
+            <td class="text-muted">{{ a.employee.depart.name }}</td>
+            <td>{{ a.clock_in|default:"-" }}</td>
+            <td>{{ a.clock_out|default:"-" }}</td>
+            <td>
+              {% if a.status == 'normal' %}<span class="label label-success">按时</span>
+              {% elif a.status == 'late' %}<span class="label label-warning">迟到</span>
+              {% elif a.status == 'early' %}<span class="label label-warning">早退</span>
+              {% else %}<span class="label label-danger">缺勤</span>{% endif %}
+            </td>
+            <td class="text-muted">{{ a.remark|default:"-" }}</td>
+            <td>
+              {% if can_edit %}<a href="{% url 'att_edit' a.id %}" class="btn btn-xs btn-info">编辑</a>{% endif %}
+              {% if can_delete %}<a href="{% url 'att_delete' a.id %}" class="btn btn-xs btn-danger" onclick="return confirm('确定删除？')">删除</a>{% endif %}
+              {% if not can_edit and not can_delete %}<span class="text-muted">只读</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted">暂无数据</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {{ pagination.html }}
+    </div>
+  </div>
+</div>
+{% endblock %}

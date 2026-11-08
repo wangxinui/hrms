@@ -1,0 +1,19 @@
+{% extends 'app01/base.html' %}
+{% block page_title %}员工详情{% endblock %}
+{% block breadcrumb %}
+  <li><a href="{% url 'emp_list' %}">员工管理</a></li>
+{% endblock %}
+{% block crumb_name %}{{ emp.name }}{% endblock %}
+
+{% block content %}
+{% include 'app01/employee/_detail_body.html' %}
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="btn-group">
+      {% if can_edit %}<a href="{% url 'emp_edit' emp.id %}" class="btn btn-info">编辑</a>{% endif %}
+      <a href="{% url 'emp_list' %}" class="btn btn-default">返回列表</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

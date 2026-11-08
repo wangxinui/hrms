@@ -1,0 +1,32 @@
+{% extends 'app01/base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb %}<li><a href="{% url 'ann_list' %}">公告管理</a></li>{% endblock %}
+{% block crumb_name %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8 col-md-offset-2">
+    <div class="box">
+      <div class="box-header with-border"><h3 class="box-title">{{ title }}</h3></div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="box-body">
+          {% for field in form %}
+          <div class="form-group {% if field.errors %}has-error{% endif %}">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              {% for e in field.errors %}<span class="help-block">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="box-footer">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <a href="{% url 'ann_list' %}" class="btn btn-default">取消</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

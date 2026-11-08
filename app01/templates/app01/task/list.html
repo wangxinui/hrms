@@ -1,0 +1,104 @@
+{% extends 'app01/base.html' %}
+{% load perm_tags %}
+{% block page_title %}任务管理{% endblock %}
+{% block breadcrumb %}<li class="active">任务</li>{% endblock %}
+{% block crumb_name %}任务列表{% endblock %}
+
+{% block content %}
+{% can 'task_add' as can_add %}
+{% can 'task_edit' as can_edit %}
+{% can 'task_delete' as can_delete %}
+<div class="page-task">
+
+  {% include 'app01/partials/_kpi_cards.html' with kpis=kpis %}
+
+  <div class="task-toolbar">
+    <form method="get" class="form-inline task-toolbar-form">
+      <div class="task-toolbar-group">
+        <select name="level" class="form-control input-sm em-control" style="width:120px;">
+          <option value="">全部级别</option>
+          <option value="1" {% if level == "1" %}selected{% endif %}>紧急</option>
+          <option value="2" {% if level == "2" %}selected{% endif %}>高</option>
+          <option value="3" {% if level == "3" %}selected{% endif %}>中</option>
+          <option value="4" {% if level == "4" %}selected{% endif %}>低</option>
+        </select>
+      </div>
+      <div class="task-toolbar-group">
+        <select name="status" class="form-control input-sm em-control" style="width:140px;">
+          <option value="">全部状态</option>
+          <option value="todo" {% if status == "todo" %}selected{% endif %}>待处理</option>
+          <option value="doing" {% if status == "doing" %}selected{% endif %}>进行中</option>
+          <option value="done" {% if status == "done" %}selected{% endif %}>已完成</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm"><i class="fa fa-search"></i> 查询</button>
+    </form>
+    {% if can_add %}
+    <a href="{% url 'task_add' %}" class="btn btn-primary"><i class="fa fa-plus"></i> 新建任务</a>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <div class="box-body">
+      <table class="table table-hover task-table">
+        <thead>
+          <tr><th style="width:56px;">ID</th><th>标题</th><th style="width:80px;">级别</th><th>负责人</th><th style="width:100px;">状态</th><th>创建时间</th><th style="width:210px;">操作</th></tr>
+        </thead>
+        <tbody>
+          {% for t in pagination.object_list %}
+          <tr>
+            <td class="text-muted">{{ t.id }}</td>
+            <td><strong>{{ t.title }}</strong></td>
+            <td>
+              {% if t.level == 1 %}<span class="label label-danger">紧急</span>
+              {% elif t.level == 2 %}<span class="label label-warning">高</span>
+              {% elif t.level == 3 %}<span class="label label-info">中</span>
+              {% else %}<span class="label label-default">低</span>{% endif %}
+            </td>
+            <td>{{ t.owner.name }} <span class="text-muted">({{ t.owner.depart.name }})</span></td>
+            <td>
+              {% if t.status == 'todo' %}<span class="label label-default">待处理</span>
+              {% elif t.status == 'doing' %}<span class="label label-info">进行中</span>
+              {% else %}<span class="label label-success">已完成</span>{% endif %}
+            </td>
+            <td class="text-muted">{{ t.created_at|date:"Y-m-d H:i" }}</td>
+            <td>
+              {% if can_edit %}<a href="{% url 'task_edit' t.id %}" class="btn btn-xs btn-info">编辑</a>{% endif %}
+              {% if can_delete %}<button type="button" class="btn btn-xs btn-danger btn-del" data-id="{{ t.id }}">删除</button>{% endif %}
+              {% if not can_edit and not can_delete %}<span class="text-muted">只读</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-muted">暂无数据</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {{ pagination.html }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// AJAX 删除
+$(document).on("click", ".btn-del", function(){
+  if (!confirm("确定删除？")) return;
+  var id = $(this).data("id");
+  $.ajax({
+    url: "/task/" + id + "/delete/",
+    type: "POST",
+    headers: {"X-Requested-With": "XMLHttpRequest",
+              "X-CSRFToken": getCookie("csrftoken")},
+    success: function(data){
+      if (data.code === 0) { location.reload(); }
+      else { alert(data.msg); }
+    }
+  });
+});
+function getCookie(name){
+  var v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return v ? v.pop() : "";
+}
+</script>
+{% endblock %}

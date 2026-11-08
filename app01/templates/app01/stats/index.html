@@ -1,0 +1,122 @@
+{% extends 'app01/base.html' %}
+{% block page_title %}数据统计{% endblock %}
+{% block breadcrumb %}<li class="active">统计</li>{% endblock %}
+{% block crumb_name %}数据可视化{% endblock %}
+
+{% block content %}
+<div class="page-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="box">
+        <div class="box-header with-border"><h3 class="box-title">部门在职人数分布</h3></div>
+        <div class="box-body"><div id="chart-dept" style="height:360px;"></div></div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="box">
+        <div class="box-header with-border"><h3 class="box-title">各月薪资总额趋势</h3></div>
+        <div class="box-body"><div id="chart-salary" style="height:360px;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="box">
+        <div class="box-header with-border"><h3 class="box-title">考勤状态概览</h3></div>
+        <div class="box-body"><div id="chart-att" style="height:360px;"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// HRMS ECharts 主题色板
+var HRMS_PALETTE = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b"];
+
+$(function(){
+  // 部门分布饼图
+  $.getJSON("/api/stats/dept/", function(res){
+    var chart = echarts.init(document.getElementById("chart-dept"));
+    chart.setOption({
+      color: HRMS_PALETTE,
+      tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+      legend: { orient: "vertical", right: "5%", top: "center", textStyle: { color: "#64748b" } },
+      series: [{
+        name: "人数", type: "pie", radius: ["42%", "70%"],
+        label: { show: true, formatter: "{b}\n{c}人", color: "#0f172a" },
+        labelLine: { lineStyle: { color: "#e2e8f0" } },
+        data: res.data.map(function(d){ return { name: d.name, value: d.count }; }),
+      }]
+    });
+    $(window).on("resize", function(){ chart.resize(); });
+  });
+
+  // 薪资趋势折线图
+  $.getJSON("/api/stats/salary/", function(res){
+    var chart = echarts.init(document.getElementById("chart-salary"));
+    chart.setOption({
+      color: ["#2563eb"],
+      tooltip: { trigger: "axis" },
+      grid: { left: 50, right: 24, top: 24, bottom: 36 },
+      xAxis: {
+        type: "category", boundaryGap: false,
+        data: res.data.map(function(d){ return d.month_str; }),
+        axisLine: { lineStyle: { color: "#e2e8f0" } },
+        axisLabel: { color: "#64748b" },
+      },
+      yAxis: {
+        type: "value", axisLabel: { formatter: "￥{value}", color: "#64748b" },
+        splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
+      },
+      series: [{
+        name: "薪资总额", type: "line", smooth: true, symbol: "circle", symbolSize: 6,
+        lineStyle: { width: 2, color: "#2563eb" },
+        itemStyle: { color: "#2563eb", borderColor: "#fff", borderWidth: 2 },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: "rgba(37,99,235,.28)" },
+            { offset: 1, color: "rgba(37,99,235,.02)" }
+          ])
+        },
+        data: res.data.map(function(d){ return Number(d.total); }),
+      }]
+    });
+    $(window).on("resize", function(){ chart.resize(); });
+  });
+
+  // 考勤概览柱图
+  $.getJSON("/api/stats/attendance/", function(res){
+    var d = res.data;
+    var chart = echarts.init(document.getElementById("chart-att"));
+    chart.setOption({
+      tooltip: { trigger: "axis" },
+      grid: { left: 50, right: 24, top: 24, bottom: 36 },
+      xAxis: {
+        type: "category", data: ["按时", "迟到", "早退", "缺勤"],
+        axisLine: { lineStyle: { color: "#e2e8f0" } },
+        axisLabel: { color: "#64748b" },
+      },
+      yAxis: {
+        type: "value",
+        splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
+        axisLabel: { color: "#64748b" },
+      },
+      series: [{
+        name: "次数", type: "bar", barWidth: "44%",
+        itemStyle: {
+          borderRadius: [6, 6, 0, 0],
+          color: function(p){
+            return ["#10b981", "#f59e0b", "#f59e0b", "#ef4444"][p.dataIndex];
+          }
+        },
+        data: [d.normal, d.late, d.early, d.absent],
+      }]
+    });
+    $(window).on("resize", function(){ chart.resize(); });
+  });
+});
+</script>
+{% endblock %}

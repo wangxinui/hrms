@@ -1,0 +1,29 @@
+{% extends 'app01/base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb %}
+  <li><a href="javascript:history.back();">返回列表</a></li>
+{% endblock %}
+{% block crumb_name %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <div class="box box-danger">
+      <div class="box-header with-border">
+        <h3 class="box-title">{{ title }}</h3>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="box-body">
+          <p>确定要删除吗？此操作不可恢复。</p>
+          <p><strong>{{ object }}</strong></p>
+        </div>
+        <div class="box-footer">
+          <button type="submit" class="btn btn-danger">确认删除</button>
+          <a href="javascript:history.back();" class="btn btn-default">取消</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

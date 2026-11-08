@@ -1,0 +1,49 @@
+{% extends 'app01/base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb %}<li><a href="{% url 'emp_list' %}">员工管理</a></li>{% endblock %}
+{% block crumb_name %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8 col-md-offset-2">
+    <div class="box">
+      <div class="box-header with-border"><h3 class="box-title">{{ title }}</h3></div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="box-body">
+          <div class="alert alert-info">
+            <i class="fa fa-info-circle"></i>
+            保存后系统会自动为该员工开通登录账号：<b>用户名 = 手机号</b>，初始密码 <b>{{ default_password }}</b>。
+            账号角色决定其数据可见范围，仅超级管理员可调整为部门管理员。
+          </div>
+          <div class="row">
+            {% for field in form %}
+            <div class="col-md-6">
+              <div class="form-group {% if field.errors %}has-error{% endif %}">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                  {% for e in field.errors %}<span class="help-block">{{ e }}</span>{% endfor %}
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="box-footer">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <a href="{% url 'emp_list' %}" class="btn btn-default">取消</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function(){
+  $('input[type=date]').datepicker({ format: 'yyyy-mm-dd', language: 'zh-CN', autoclose: true });
+});
+</script>
+{% endblock %}

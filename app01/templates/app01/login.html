@@ -1,0 +1,145 @@
+{% load static %}<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>登录 · HRMS 企业员工管理系统</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'adminlte/bower_components/font-awesome/css/font-awesome.min.css' %}">
+  <link rel="stylesheet" href="{% static 'app01/css/hrms-login.css' %}">
+</head>
+<body>
+
+<main class="auth-shell">
+  <!-- 品牌区 -->
+  <section class="brand-panel" aria-label="系统介绍">
+    <div>
+      <div class="brand-mark" aria-hidden="true">H</div>
+      <h1 class="brand-title">企业员工管理系统</h1>
+      <p class="brand-sub">集人员档案、考勤核算、薪酬发放与数据报表于一体的内部管理平台。</p>
+
+      <ul class="feature-list">
+        <li>
+          <span class="feature-icon"><i class="fa fa-users" aria-hidden="true"></i></span>
+          <div><strong>员工与组织</strong><span>部门层级、员工档案与岗位信息</span></div>
+        </li>
+        <li>
+          <span class="feature-icon"><i class="fa fa-calendar-check-o" aria-hidden="true"></i></span>
+          <div><strong>考勤与薪资</strong><span>自动判定迟到早退，实发工资核算</span></div>
+        </li>
+        <li>
+          <span class="feature-icon"><i class="fa fa-bar-chart" aria-hidden="true"></i></span>
+          <div><strong>数据看板</strong><span>部门分布、薪资趋势与考勤统计</span></div>
+        </li>
+      </ul>
+    </div>
+    <div class="brand-foot">HRMS · 课程设计项目</div>
+  </section>
+
+  <!-- 表单区 -->
+  <section class="form-panel">
+    <div class="form-head">
+      <h2>欢迎回来</h2>
+      <p>请使用管理员或员工账号登录，进入工作台。</p>
+    </div>
+
+    {% if messages %}
+      <div aria-live="polite">
+        {% for msg in messages %}
+          <div class="alert-problem">
+            <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+            <span>{{ msg }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="/login/" autocomplete="on">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
+
+      <div class="field">
+        <label class="field-label" for="username">用户名</label>
+        <div class="field-control">
+          <i class="fa fa-user-o" aria-hidden="true"></i>
+          <input id="username" type="text" name="username" placeholder="请输入用户名"
+                 autocomplete="username" required autofocus>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="password">密码</label>
+        <div class="field-control">
+          <i class="fa fa-lock" aria-hidden="true"></i>
+          <input id="password" type="password" name="password" placeholder="请输入登录密码"
+                 autocomplete="current-password" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="captcha">验证码</label>
+        <div class="captcha-row">
+          <div class="field-control">
+            <i class="fa fa-shield" aria-hidden="true"></i>
+            <input id="captcha" type="text" name="captcha" placeholder="输入右侧字符"
+                   maxlength="4" autocomplete="off" required>
+          </div>
+          <button type="button" class="captcha-box" id="captcha-box" title="点击刷新验证码"
+                  aria-label="刷新验证码">
+            <img id="captcha-img" src="/captcha/" alt="验证码图片">
+          </button>
+        </div>
+        <div class="captcha-tip">
+          <span>看不清？点击图片刷新</span>
+          <button type="button" id="captcha-refresh">换一张</button>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">登 录</button>
+    </form>
+
+    <div class="demo-label">演示账号 · 点击填入</div>
+    <div class="demo-row">
+      <button type="button" class="demo-chip" data-user="admin" data-pass="admin123">
+        <b>超级管理员</b><small>admin</small>
+      </button>
+      <button type="button" class="demo-chip" data-user="13810000002" data-pass="123456">
+        <b>部门管理员</b><small>13810000002</small>
+      </button>
+      <button type="button" class="demo-chip" data-user="13810000000" data-pass="123456">
+        <b>普通员工</b><small>13810000000</small>
+      </button>
+    </div>
+  </section>
+</main>
+
+<script>
+  (function () {
+    var img = document.getElementById('captcha-img');
+
+    function refreshCaptcha() {
+      img.src = '/captcha/?t=' + Date.now();
+    }
+
+    document.getElementById('captcha-box').addEventListener('click', refreshCaptcha);
+    document.getElementById('captcha-refresh').addEventListener('click', refreshCaptcha);
+
+    // 演示账号一键填入
+    document.querySelectorAll('.demo-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        document.getElementById('username').value = chip.dataset.user;
+        document.getElementById('password').value = chip.dataset.pass;
+        document.getElementById('captcha').focus();
+      });
+    });
+
+    // 提交后禁用按钮，避免重复提交
+    document.querySelector('form').addEventListener('submit', function () {
+      var btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = '登录中…';
+    });
+  })();
+</script>
+</body>
+</html>

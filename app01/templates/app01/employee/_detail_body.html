@@ -1,0 +1,111 @@
+{% load perm_tags %}
+{% can 'employee_edit' as can_edit %}
+{% can 'employee_delete' as can_delete %}
+<div class="page-employee page-employee-detail">
+
+  <div class="row">
+    <!-- 左侧：头像卡 -->
+    <div class="col-md-4">
+      <div class="box">
+        <div class="box-body em-profile-card">
+          {% if emp.avatar %}
+            <img src="{{ emp.avatar.url }}" class="em-profile-avatar" width="120" height="120">
+          {% else %}
+            <img src="/static/adminlte/dist/img/user2-160x160.jpg" class="em-profile-avatar" width="120" height="120">
+          {% endif %}
+          <h3 class="em-profile-name">{{ emp.name }}</h3>
+          <span class="em-profile-dept">{{ emp.depart.name|default:"-" }}</span>
+          <div class="em-profile-meta">
+            {% if emp.user %}
+              <span class="em-profile-role">{{ emp.user.role.name|default:"-" }}</span>
+            {% endif %}
+            <span class="em-profile-status">
+              {% if emp.status == 1 %}在职{% elif emp.status == 2 %}离职{% else %}试用期{% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：基本信息 + 账号 -->
+    <div class="col-md-8">
+      <div class="box">
+        <div class="box-header with-border em-box-header">
+          <h3 class="box-title">基本信息</h3>
+        </div>
+        <div class="box-body">
+          <table class="table em-detail-table">
+            <tbody>
+              <tr>
+                <th>姓名</th><td>{{ emp.name }}</td>
+                <th>性别</th><td>{% if emp.gender == 1 %}男{% else %}女{% endif %}</td>
+              </tr>
+              <tr>
+                <th>年龄</th><td>{{ emp.age }}</td>
+                <th>手机号</th><td>{{ emp.phone }}</td>
+              </tr>
+              <tr>
+                <th>邮箱</th><td>{{ emp.email|default:"-" }}</td>
+                <th>部门</th><td>{{ emp.depart.name|default:"-" }}</td>
+              </tr>
+              <tr>
+                <th>入职日期</th><td>{{ emp.hire_date }}</td>
+                <th>状态</th>
+                <td>
+                  {% if emp.status == 1 %}<span class="em-status em-status-active"><span class="em-status-dot"></span>在职</span>
+                  {% elif emp.status == 2 %}<span class="em-status em-status-left"><span class="em-status-dot"></span>离职</span>
+                  {% else %}<span class="em-status em-status-prob"><span class="em-status-dot"></span>试用期</span>{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <th>账户余额</th><td colspan="3"><strong>￥{{ emp.account_balance }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-header with-border em-box-header">
+          <h3 class="box-title">登录账号</h3>
+        </div>
+        <div class="box-body">
+          <table class="table em-detail-table">
+            <tbody>
+              <tr>
+                <th style="width:120px;">账号</th>
+                <td>
+                  {% if emp.user %}
+                    <span class="em-username">{{ emp.user.username }}</span>
+                  {% else %}
+                    <span class="text-muted">未开通</span>
+                  {% endif %}
+                </td>
+                <th style="width:120px;">角色</th>
+                <td>{{ emp.user.role.name|default:"-" }}</td>
+              </tr>
+              <tr>
+                <th>初始密码</th>
+                <td colspan="3">
+                  <code>{{ default_password }}</code>
+                  <span class="text-muted">（建议首次登录后由管理员重置）</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          {% if can_edit %}
+          <form method="post" action="{% url 'emp_reset_password' emp.id %}"
+                class="em-reset-form"
+                onsubmit="return confirm('确定将该员工密码重置为 {{ default_password }} ？')"
+                style="margin-top:14px;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning btn-sm">
+              <i class="fa fa-refresh"></i> 重置密码为 {{ default_password }}
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,67 @@
+{% extends 'app01/base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb %}<li><a href="{% url 'task_list' %}">任务管理</a></li>{% endblock %}
+{% block crumb_name %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8 col-md-offset-2">
+    <div class="box">
+      <div class="box-header with-border"><h3 class="box-title">{{ title }} <small class="text-muted">AJAX 异步提交</small></h3></div>
+      <form id="task-form">
+        {% csrf_token %}
+        <div class="box-body">
+          {% for field in form %}
+          <div class="form-group {% if field.errors %}has-error{% endif %}">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              {% for e in field.errors %}<span class="help-block">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+          {% endfor %}
+          <div id="form-errors" class="alert alert-danger" style="display:none;"></div>
+        </div>
+        <div class="box-footer">
+          <button type="submit" class="btn btn-primary" id="btn-submit">提交</button>
+          <a href="{% url 'task_list' %}" class="btn btn-default">取消</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function(){
+  $("#task-form").on("submit", function(e){
+    e.preventDefault();
+    $("#form-errors").hide().empty();
+    var $btn = $("#btn-submit").prop("disabled", true).text("提交中...");
+    $.ajax({
+      url: "",
+      type: "POST",
+      data: $(this).serialize(),
+      headers: {"X-Requested-With": "XMLHttpRequest"},
+      success: function(data){
+        if (data.code === 0) {
+          alert(data.msg);
+          window.location.href = "/task/";
+        } else {
+          var errs = data.errors || {};
+          var html = "<ul>";
+          Object.keys(errs).forEach(function(k){
+            errs[k].forEach(function(msg){ html += "<li>" + k + ": " + msg.message + "</li>"; });
+          });
+          html += "</ul>";
+          $("#form-errors").html(html).show();
+        }
+      },
+      complete: function(){ $btn.prop("disabled", false).text("提交"); },
+      error: function(){ alert("请求失败"); $btn.prop("disabled", false).text("提交"); }
+    });
+  });
+});
+</script>
+{% endblock %}

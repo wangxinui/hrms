@@ -1,0 +1,286 @@
+{% extends 'app01/base.html' %}
+{% load perm_tags %}
+{% block page_title %}员工管理{% endblock %}
+{% block breadcrumb %}<li class="active">员工</li>{% endblock %}
+{% block crumb_name %}员工列表{% endblock %}
+
+{% block content %}
+{% can 'employee_add' as can_add %}
+{% can 'employee_edit' as can_edit %}
+{% can 'employee_delete' as can_delete %}
+
+<div class="page-employee">
+
+  {% include 'app01/partials/_kpi_cards.html' with kpis=kpis %}
+
+  <!-- 筛选工具条 -->
+  <div class="em-toolbar">
+    <form method="get" class="form-inline em-toolbar-form">
+      <div class="em-toolbar-group">
+        <i class="fa fa-sitemap em-toolbar-icon"></i>
+        <select name="depart" class="form-control input-sm em-control">
+          <option value="">全部部门</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}" {% if depart_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="em-toolbar-group em-toolbar-search">
+        <i class="fa fa-search em-toolbar-icon"></i>
+        <input type="text" name="kw" class="form-control input-sm em-control"
+               placeholder="搜索姓名/工号" value="{{ kw }}">
+      </div>
+      <button class="btn btn-primary btn-sm em-search-btn"><i class="fa fa-search"></i> 查询</button>
+      {% if kw or depart_id %}
+      <a href="{% url 'emp_list' %}" class="btn btn-default btn-sm"><i class="fa fa-times"></i> 清空</a>
+      {% endif %}
+    </form>
+    {% if can_add %}
+    <a href="{% url 'emp_add' %}" class="btn btn-primary em-add-btn">
+      <i class="fa fa-plus"></i> 新增员工
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- 员工表格 -->
+  <div class="box">
+    <div class="box-header with-border em-box-header">
+      <h3 class="box-title">员工列表</h3>
+      <span class="text-muted em-box-sub">显示 {{ pagination.page_number }} / {{ pagination.total_pages }} 页，共 {{ pagination.total }} 条</span>
+    </div>
+    <div class="box-body">
+      <table class="table table-hover em-table">
+        <thead>
+          <tr>
+            <th style="width:48px;">头像</th>
+            <th>姓名</th>
+            <th style="width:48px;">性别</th>
+            <th style="width:56px;">年龄</th>
+            <th>部门</th>
+            <th style="width:88px;">状态</th>
+            {% if can_edit or can_delete %}<th style="width:140px;">操作</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in pagination.object_list %}
+          <tr>
+            <td>
+              {% if e.avatar %}
+                <img src="{{ e.avatar.url }}" class="em-avatar" width="36" height="36">
+              {% else %}
+                <img src="/static/adminlte/dist/img/user2-160x160.jpg" class="em-avatar" width="36" height="36">
+              {% endif %}
+            </td>
+            <td><strong>{{ e.name }}</strong></td>
+            <td class="text-muted">{% if e.gender == 1 %}男{% else %}女{% endif %}</td>
+            <td class="text-muted">{{ e.age }}</td>
+            <td>
+              {% if e.depart %}
+                <span class="label em-dept-tag">{{ e.depart.name }}</span>
+              {% else %}<span class="text-muted">-</span>{% endif %}
+            </td>
+            <td>
+              {% if e.status == 1 %}
+                <span class="em-status em-status-active"><span class="em-status-dot"></span>在职</span>
+              {% elif e.status == 2 %}
+                <span class="em-status em-status-left"><span class="em-status-dot"></span>离职</span>
+              {% else %}
+                <span class="em-status em-status-prob"><span class="em-status-dot"></span>试用期</span>
+              {% endif %}
+            </td>
+            {% if can_edit or can_delete %}
+            <td>
+              <a href="{% url 'emp_detail' e.id %}" class="btn btn-xs btn-default em-detail-link" data-id="{{ e.id }}">详情</a>
+              {% if can_edit %}<a href="{% url 'emp_edit' e.id %}" class="btn btn-xs btn-info">编辑</a>{% endif %}
+              {% if can_delete %}<a href="{% url 'emp_delete' e.id %}" class="btn btn-xs btn-danger" onclick="return confirm('确定删除？')">删除</a>{% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="text-center text-muted em-empty">暂无数据</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {{ pagination.html }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var drawer = $(".em-drawer");
+  var body   = $(".em-drawer-body");
+  var bg     = $(".em-drawer-backdrop");
+  var title  = $(".em-drawer-title");
+  var editBtn = $(".em-drawer-edit-btn");
+  var backBtn = $(".em-drawer-back-btn");
+  var currentId = null;  // 当前抽屉里的员工 pk
+
+  if (!drawer.length) return;
+
+  // ------- helpers -------
+  function openDrawer(){ drawer.addClass("open"); bg.addClass("open"); $("body").css("overflow","hidden"); }
+  function closeDrawer(){ drawer.removeClass("open"); bg.removeClass("open"); $("body").css("overflow",""); currentId = null; }
+  function showEditBtn(){ editBtn.removeClass("em-hidden"); backBtn.addClass("em-hidden"); }
+  function showBackBtn(){ editBtn.addClass("em-hidden"); backBtn.removeClass("em-hidden"); }
+  function csrfToken(){
+    var m = document.cookie.match(/(^|;\s*)csrftoken\s*=\s*([^;]+)/);
+    return m ? m.pop() : "";
+  }
+  function toast(msg, kind){
+    kind = kind === "error" ? "alert-danger" : "alert-success";
+    var el = $('<div class="alert ' + kind + ' em-drawer-toast">' + msg + '</div>');
+    drawer.prepend(el);
+    setTimeout(function(){ el.fadeOut(300, function(){ el.remove(); }); }, 2500);
+  }
+  function ajaxHeaders(){
+    return {
+      "X-Requested-With": "XMLHttpRequest",
+      "X-CSRFToken": csrfToken(),
+    };
+  }
+
+  // ------- 详情页：点表格行的"详情"按钮 -------
+  $(document).on("click", ".em-detail-link", function(e){
+    e.preventDefault();
+    var id = $(this).data("id");
+    if (!id) return;
+    currentId = id;
+    title.text("加载中…");
+    body.html('<div class="em-drawer-loading"><i class="fa fa-spinner fa-spin"></i> 正在加载员工档案</div>');
+    openDrawer();
+    loadDetail();
+  });
+
+  function loadDetail(){
+    title.text("员工档案");
+    body.html('<div class="em-drawer-loading"><i class="fa fa-spinner fa-spin"></i> 正在加载员工档案</div>');
+    editBtn.removeClass("em-hidden");
+    backBtn.addClass("em-hidden");
+    $.ajax({
+      url: "/employee/" + currentId + "/fragment/",
+      type: "GET",
+      success: function(html){
+        body.html(html);
+      },
+      error: function(xhr){
+        title.text("错误");
+        body.html('<div class="text-center text-muted" style="padding:40px;">加载失败：'
+                  + (xhr.responseText || xhr.statusText) + '</div>');
+        editBtn.addClass("em-hidden");
+      }
+    });
+  }
+
+  // ------- 详情里的重置密码 -------
+  $(document).on("submit", ".em-reset-form", function(e){
+    e.preventDefault();
+    var $form = $(this);
+    var url = $form.attr("action");
+    var data = $form.serialize();
+    var $btn = $form.find("button").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> 提交中…');
+    $.ajax({
+      url: url, type: "POST", data: data, headers: ajaxHeaders(),
+      success: function(res){
+        if (res.code === 0) {
+          toast(res.msg || "密码重置成功", "success");
+          loadDetail();  // 抽屉里刷新
+        } else {
+          toast(res.msg || "操作失败", "error");
+        }
+      },
+      error: function(xhr){
+        try { var r = JSON.parse(xhr.responseText); toast(r.msg || "请求失败", "error"); }
+        catch(err){ toast("请求失败（HTTP " + xhr.status + "）", "error"); }
+      },
+      complete: function(){ $btn.prop("disabled", false).html('<i class="fa fa-refresh"></i> 重置密码'); }
+    });
+  });
+
+  // ------- 抽屉 header 点"编辑" -------
+  editBtn.on("click", function(){
+    if (!currentId) return;
+    title.text("加载编辑表单…");
+    body.html('<div class="em-drawer-loading"><i class="fa fa-spinner fa-spin"></i> 正在加载编辑表单</div>');
+    showBackBtn();
+    $.ajax({
+      url: "/employee/" + currentId + "/edit/",
+      type: "GET",
+      headers: ajaxHeaders(),
+      success: function(res){
+        if (res.code === 0 && res.html) {
+          title.text("编辑员工");
+          body.html(res.html);
+          // datepicker 重新绑定
+          if ($.fn.datepicker) { body.find('input[type=date]').datepicker({ format:'yyyy-mm-dd', language:'zh-CN', autoclose:true }); }
+        } else {
+          title.text("错误");
+          body.html('<div class="text-center text-muted" style="padding:40px;">' + (res.msg || "加载失败") + '</div>');
+          showEditBtn();
+        }
+      },
+      error: function(xhr){
+        title.text("错误");
+        body.html('<div class="text-center text-muted" style="padding:40px;">' + (xhr.responseText || xhr.statusText) + '</div>');
+        showEditBtn();
+      }
+    });
+  });
+
+  // ------- 抽屉 header 点"返回详情" -------
+  backBtn.on("click", function(){
+    loadDetail();
+  });
+
+  // ------- 编辑表单：提交 -------
+  $(document).on("submit", "form.em-drawer-form", function(e){
+    e.preventDefault();
+    var $form = $(this);
+    var url = $form.attr("action") || ("/employee/" + currentId + "/edit/");
+    var data = new FormData($form[0]);
+    var $save = $form.find(".em-drawer-save").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> 保存中…');
+    body.find(".em-drawer-form-alert").empty();
+    $.ajax({
+      url: url, type: "POST", data: data, processData: false, contentType: false,
+      headers: ajaxHeaders(),
+      success: function(res){
+        if (res.code === 0) {
+          toast(res.msg || "修改成功", "success");
+          loadDetail();
+        } else {
+          // 把 field 错误渲染到表单里的 help-block
+          var errs = res.errors || {};
+          Object.keys(errs).forEach(function(f){
+            var input = $form.find("[name='" + f + "']");
+            input.closest(".form-group").addClass("has-error");
+            input.next(".help-block").remove();
+            var ul = $("<span class='help-block'></span>").text(errs[f].join("；"));
+            input.after(ul);
+          });
+          toast("表单校验未通过，请修正红色字段", "error");
+        }
+      },
+      error: function(xhr){
+        try { var r = JSON.parse(xhr.responseText); toast(r.msg || "保存失败", "error"); }
+        catch(err){ toast("请求失败（HTTP " + xhr.status + "）", "error"); }
+      },
+      complete: function(){ $save.prop("disabled", false).html('<i class="fa fa-save"></i> 保存修改'); }
+    });
+  });
+
+  // ------- 编辑表单：取消按钮 -------
+  $(document).on("click", ".em-drawer-cancel", function(){
+    loadDetail();
+  });
+
+  // ------- 关闭交互 -------
+  $(document).on("click", ".em-drawer-close", closeDrawer);
+  $(document).on("click", ".em-drawer-backdrop", closeDrawer);
+  $(document).on("keydown", function(e){
+    if (e.key === "Escape" && drawer.hasClass("open")) closeDrawer();
+  });
+})();
+</script>
+{% endblock %}

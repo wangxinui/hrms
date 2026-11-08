@@ -1,0 +1,59 @@
+{% extends 'app01/base.html' %}
+{% load perm_tags %}
+{% block page_title %}部门管理{% endblock %}
+{% block page_sub %}Department Management{% endblock %}
+{% block breadcrumb %}<li class="active">部门</li>{% endblock %}
+{% block crumb_name %}部门列表{% endblock %}
+
+{% block content %}
+{% can 'department_add' as can_add %}
+{% can 'department_edit' as can_edit %}
+{% can 'department_delete' as can_delete %}
+<div class="page-dept">
+
+  {% include 'app01/partials/_kpi_cards.html' with kpis=kpis %}
+
+  <div class="dept-toolbar">
+    <form method="get" class="form-inline dept-toolbar-form">
+      <div class="dept-toolbar-group">
+        <i class="fa fa-search dept-toolbar-icon"></i>
+        <input type="text" name="kw" class="form-control input-sm em-control" placeholder="部门名称" value="{{ kw }}">
+      </div>
+      <button class="btn btn-primary btn-sm"><i class="fa fa-search"></i> 查询</button>
+      {% if kw %}<a href="{% url 'dept_list' %}" class="btn btn-default btn-sm"><i class="fa fa-times"></i> 清空</a>{% endif %}
+    </form>
+    {% if can_add %}
+    <a href="{% url 'dept_add' %}" class="btn btn-primary"><i class="fa fa-plus"></i> 新增部门</a>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <div class="box-body">
+      <table class="table table-hover dept-table">
+        <thead>
+          <tr><th style="width:56px;">ID</th><th>部门名称</th><th>编码</th><th>上级部门</th><th>描述</th><th style="width:150px;">操作</th></tr>
+        </thead>
+        <tbody>
+          {% for d in pagination.object_list %}
+          <tr>
+            <td class="text-muted">{{ d.id }}</td>
+            <td><strong>{{ d.name }}</strong></td>
+            <td><code>{{ d.code }}</code></td>
+            <td>{{ d.parent.name|default:"-" }}</td>
+            <td class="text-muted">{{ d.description|default:"-" }}</td>
+            <td>
+              {% if can_edit %}<a href="{% url 'dept_edit' d.id %}" class="btn btn-xs btn-info">编辑</a>{% endif %}
+              {% if can_delete %}<a href="{% url 'dept_delete' d.id %}" class="btn btn-xs btn-danger" onclick="return confirm('确定删除？')">删除</a>{% endif %}
+              {% if not can_edit and not can_delete %}<span class="text-muted">只读</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted">暂无数据</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {{ pagination.html }}
+    </div>
+  </div>
+</div>
+{% endblock %}

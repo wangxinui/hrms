@@ -1,0 +1,33 @@
+{# 编辑表单片段：供抽屉 AJAX 加载，不继承 base.html。独立详情页的编辑仍走 form.html。 #}
+<form class="page-employee page-employee-edit em-drawer-form" id="em-drawer-edit-form"
+      method="post" enctype="multipart/form-data" action="">
+  {% csrf_token %}
+  <div class="em-drawer-form-alert"></div>
+
+  <div class="box">
+    <div class="box-body">
+      <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i> 保存后立即生效。
+      </div>
+      <div class="row">
+        {% for field in form %}
+        <div class="col-md-6">
+          <div class="form-group {% if field.errors %}has-error{% endif %}">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              {% for e in field.errors %}<span class="help-block">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="box-footer">
+      <button type="submit" class="btn btn-primary em-drawer-save">
+        <i class="fa fa-save"></i> 保存修改
+      </button>
+      <button type="button" class="btn btn-default em-drawer-cancel">取消</button>
+    </div>
+  </div>
+</form>

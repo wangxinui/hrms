@@ -1,0 +1,13 @@
+<div class="row">
+  {% for k in kpis %}
+    <div class="{{ k.col_class }} col-sm-{% if k.col_class == 'col-md-2' %}4{% else %}6{% endif %}">
+      <div class="info-box">
+        <span class="info-box-icon {{ k.icon_bg }}"><i class="{{ k.icon }}"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">{{ k.label }}</span>
+          <span class="info-box-number">{{ k.value }}</span>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
