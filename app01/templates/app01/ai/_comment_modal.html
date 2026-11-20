@@ -1,0 +1,66 @@
+{% csrf_token %}
+<div class="modal fade ai-modal" id="aiCommentModal" tabindex="-1" role="dialog"
+     aria-labelledby="aiCommentTitle">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <h4 class="modal-title" id="aiCommentTitle">
+          <i class="fa fa-magic"></i> AI 点评 <span id="aiCommentWho"></span>
+        </h4>
+      </div>
+      <div class="modal-body" id="aiCommentBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/** 打开 AI 点评弹窗：员工详情、薪资列表共用
+ *  @param {number} employeeId 员工 ID
+ *  @param {string} month      统计月份 YYYY-MM，可空
+ *  @param {string} name       员工姓名，用于标题
+ */
+window.showAiComment = function (employeeId, month, name) {
+  var body = document.getElementById("aiCommentBody");
+  var who = document.getElementById("aiCommentWho");
+  if (!body) { return; }
+  if (who) { who.textContent = name ? "· " + name : ""; }
+  body.innerHTML = '<div class="ai-loading"><i class="fa fa-spinner"></i> 正在读取考勤与薪资数据…</div>';
+  if (window.jQuery) { window.jQuery("#aiCommentModal").modal("show"); }
+
+  var tokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
+  var token = tokenInput ? tokenInput.value : "";
+
+  function esc(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  fetch("/ai/api/employee/" + employeeId + "/comment/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": token,
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: JSON.stringify({ month: month || "" })
+  }).then(function (res) {
+    return res.json();
+  }).then(function (data) {
+    if (data.code === 0) {
+      body.textContent = "【" + data.data.month + "】\n\n" + data.data.answer;
+    } else {
+      body.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-circle"></i> ' +
+        esc(data.msg) + '</div>';
+    }
+  }).catch(function () {
+    body.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-circle"></i> ' +
+      '网络异常，请稍后再试</div>';
+  });
+};
+</script>

@@ -5,6 +5,27 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _load_env_file(path):
+    """读取项目根目录 .env，写入环境变量.
+
+    仅做最简 KEY=VALUE 解析，避免为课程项目额外引入第三方依赖。
+    项目 .env 优先于系统环境变量，保证本项目配置不被其他项目污染。
+    """
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip().strip("\"'")
+        if key:
+            os.environ[key] = value
+
+
+_load_env_file(BASE_DIR / ".env")
+
 SECRET_KEY = os.environ.get(
     "SECRET_KEY",
     "django-insecure-5sty^m6!icqet=idr8(&akb97t9rc!d52a)zev#ul7@*d3h*$1",
@@ -120,6 +141,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "app01.User"
 
 LOGIN_URL = "/login/"
+
+# ── 大模型（硅基流动 OpenAI 兼容接口） ───────────────────────────────────────
+# 全部取自环境变量 / .env，代码中不出现密钥
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.siliconflow.cn/v1").rstrip("/")
+LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "30"))
+LLM_MAX_INPUT = 500          # 单次用户输入最大字符数
+LLM_HISTORY_ROUNDS = 5       # 多轮对话保留的最近轮数（1 轮 = 用户 + 助手）
 
 # ── 分级日志配置 ──────────────────────────────────────────────────────────────
 # DEBUG=True 时 INFO 及以上同时输出到控制台和文件

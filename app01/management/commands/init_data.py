@@ -20,10 +20,12 @@ class Command(BaseCommand):
             "announcement_view",
             "task_view", "task_add", "task_edit", "task_delete",
             "stats_view",
+            "ai_view",
         ],
         "employee": [
             "employee_view", "attendance_view", "salary_view",
             "announcement_view", "task_view", "task_edit",
+            "ai_view",
         ],
     }
 
@@ -65,6 +67,7 @@ class Command(BaseCommand):
             ("编辑任务", "task_edit", "任务"),
             ("删除任务", "task_delete", "任务"),
             ("查看统计", "stats_view", "统计"),
+            ("使用 AI 助手", "ai_view", "AI"),
         ]
         perm_objs = {}
         for name, code, group in PERMS:
@@ -230,6 +233,51 @@ class Command(BaseCommand):
                 }
             )
         self.stdout.write(f"  创建 {len(tasks_data)} 条任务")
+
+        # === 10. 制度知识库（供 AI 制度问答检索）===
+        knowledge_data = [
+            ("考勤与迟到制度", "attendance", "考勤 打卡 迟到 早退 旷工 缺勤",
+             "公司标准工作时间为 9:00-18:00，午休 12:00-13:00。"
+             "每月迟到 30 分钟以内每次扣款 50 元；迟到超过 30 分钟按半天事假处理。"
+             "月累计迟到 3 次以上，取消当月全勤奖。"
+             "未打卡且未补卡视为缺勤，无故缺勤 1 天按 3 倍日工资扣款。"),
+            ("请假制度", "leave", "请假 年假 事假 病假 调休 流程",
+             "年假：入职满 1 年 5 天，满 10 年 10 天，满 20 年 15 天，年假需提前 3 个工作日在系统提交申请。"
+             "病假需提供二级以上医院证明，病假期间发放基本工资的 70%。"
+             "事假按日工资全额扣除，单次事假不超过 5 天。"),
+            ("加班与调休制度", "attendance", "加班 调休 加班费 节假日",
+             "加班需提前在系统中提交申请并经部门负责人审批。"
+             "工作日加班按 1.5 倍时薪计算，休息日加班按 2 倍计算，法定节假日加班按 3 倍计算。"
+             "加班时长可申请调休，调休需在加班之日起 3 个月内使用，逾期作废。"),
+            ("差旅报销制度", "salary", "报销 差旅 发票 住宿 交通 贴票",
+             "差旅报销需提交发票原件、行程单和出差审批单，缺一不可。"
+             "住宿标准：一线城市每晚不超过 500 元，其他城市不超过 350 元；市内交通据实报销。"
+             "报销单每月 25 日前提交财务部，财务部在 5 个工作日内完成审核并打款。"),
+            ("薪资发放制度", "salary", "薪资 工资 发放 奖金 扣款 实发",
+             "公司每月 10 日发放上月工资，遇节假日提前至最近工作日。"
+             "薪资构成 = 基本工资 + 绩效奖金 - 各项扣款，实发金额以银行到账为准。"
+             "薪资信息属于保密内容，禁止同事之间相互打探或传播。"),
+            ("社保与公积金制度", "other", "社保 公积金 五险一金 缴纳 基数",
+             "公司为正式员工缴纳五险一金，入职当月开始缴纳。"
+             "缴纳基数按员工上年度月平均工资核定，新员工按首月工资核定。"
+             "住房公积金企业与个人缴纳比例均为 12%。"),
+            ("入职与离职制度", "onboard", "入职 离职 试用期 交接 材料",
+             "新员工入职需提交身份证、学历证书、体检报告和银行卡信息，试用期为 3 个月。"
+             "试用期考核合格后转为正式员工。"
+             "员工离职需提前 30 天提交书面申请，完成工作交接和资产归还后方可办理离职手续。"),
+            ("培训与晋升制度", "other", "培训 晋升 考核 调薪 评估",
+             "公司每年 4 月和 10 月组织两次晋升评估，由部门负责人提名并述职答辩。"
+             "入职满 1 年且绩效连续两次为 A 的员工可申请调薪。"
+             "公司为员工提供每年不超过 3000 元的培训补贴，需提前申请并提交培训总结。"),
+        ]
+        for title, category, keywords, content in knowledge_data:
+            models.Knowledge.objects.update_or_create(
+                title=title, defaults={
+                    "category": category, "keywords": keywords,
+                    "content": content, "is_active": True,
+                }
+            )
+        self.stdout.write(f"  创建 {len(knowledge_data)} 条制度知识")
 
         self.stdout.write(self.style.SUCCESS("演示数据初始化完成！"))
         self.stdout.write("")

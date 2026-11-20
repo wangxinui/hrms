@@ -4,6 +4,7 @@ from . import (
     auth_views, dashboard,
     department_views, employee_views, attendance_views,
     salary_views, announcement_views, task_views, stats_views,
+    ai_views,
 )
 
 urlpatterns = [
@@ -64,4 +65,14 @@ urlpatterns = [
     path("api/stats/dept/", stats_views.api_dept_distribution, name="api_dept_dist"),
     path("api/stats/salary/", stats_views.api_salary_trend, name="api_salary_trend"),
     path("api/stats/attendance/", stats_views.api_attendance_overview, name="api_att_overview"),
+
+    # AI 智能助手
+    path("ai/", ai_views.ai_page, name="ai_page"),
+    path("ai/api/jd/", ai_views.api_jd, name="ai_jd"),
+    path("ai/api/ask/", ai_views.api_ask, name="ai_ask"),
+    path("ai/api/comment/", ai_views.api_comment, name="ai_comment"),
+    path("ai/api/employee/<int:pk>/comment/", ai_views.api_employee_comment,
+         name="ai_emp_comment"),
+    path("ai/api/chat/stream/", ai_views.api_chat_stream, name="ai_chat_stream"),
+    path("ai/api/chat/clear/", ai_views.api_chat_clear, name="ai_chat_clear"),
 ]

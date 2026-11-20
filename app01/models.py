@@ -250,3 +250,33 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Knowledge(models.Model):
+    """制度知识库 - 供 AI 问答做检索增强（RAG）."""
+    CATEGORY_CHOICES = (
+        ("attendance", "考勤"),
+        ("salary", "薪资"),
+        ("leave", "休假"),
+        ("onboard", "入离职"),
+        ("other", "其他"),
+    )
+
+    title = models.CharField(max_length=128, verbose_name="制度标题")
+    category = models.CharField(
+        max_length=16, choices=CATEGORY_CHOICES, default="other", verbose_name="分类"
+    )
+    keywords = models.CharField(
+        max_length=200, blank=True, help_text="空格分隔，用于检索加权", verbose_name="关键词"
+    )
+    content = models.TextField(verbose_name="制度内容")
+    is_active = models.BooleanField(default=True, verbose_name="是否启用")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        verbose_name = "制度知识库"
+        verbose_name_plural = verbose_name
+        ordering = ["category", "id"]
+
+    def __str__(self):
+        return self.title

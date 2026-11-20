@@ -1,0 +1,555 @@
+{% extends 'app01/base.html' %}
+{% load static %}
+{% block title %}AI 智能助手 - HRMS{% endblock %}
+{% block page_title %}AI 智能助手{% endblock %}
+{% block page_sub %}招聘 JD · 制度问答 · 数据点评{% endblock %}
+{% block breadcrumb %}<li><a href="{% url 'ai_page' %}">AI 助手</a></li>{% endblock %}
+{% block crumb_name %}智能工作台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app01/css/ai.css' %}">
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+{{ chat_history|json_script:"ai-chat-history" }}
+
+<div class="ai-page">
+
+  <div class="ai-hero">
+    <h2><i class="fa fa-magic"></i> AI 智能助手</h2>
+    <p>基于大模型的招聘 JD 生成、公司制度问答与员工数据分析</p>
+    <div class="ai-hero-meta">
+      <span class="ai-badge{% if not llm_ready %} is-off{% endif %}">
+        <span class="dot"></span>{% if llm_ready %}服务正常{% else %}未配置密钥{% endif %}
+      </span>
+      <span class="ai-badge"><i class="fa fa-microchip"></i> {{ llm_model }}</span>
+      <span class="ai-badge"><i class="fa fa-comments-o"></i> 支持多轮追问</span>
+      <span class="ai-badge"><i class="fa fa-bolt"></i> 流式输出</span>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs ai-tabs">
+    <li class="active"><a href="#pane-chat" data-toggle="tab"><i class="fa fa-comments"></i>多轮对话</a></li>
+    <li><a href="#pane-jd" data-toggle="tab"><i class="fa fa-file-text-o"></i>招聘 JD</a></li>
+    <li><a href="#pane-kb" data-toggle="tab"><i class="fa fa-book"></i>制度问答</a></li>
+    <li><a href="#pane-stat" data-toggle="tab"><i class="fa fa-line-chart"></i>数据点评</a></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ══ T5 + T7：多轮对话 / 流式输出 ══════════════════════════ -->
+    <div class="tab-pane active" id="pane-chat">
+      <div class="ai-panel">
+        <div class="ai-chat-toolbar">
+          <div>
+            <h4 class="ai-section-title">多轮对话</h4>
+            <p class="ai-section-desc">系统会带上最近 5 轮上下文，可以连续追问</p>
+          </div>
+          <button type="button" class="btn btn-default btn-sm" id="aiChatClear">
+            <i class="fa fa-trash-o"></i> 清空对话
+          </button>
+        </div>
+
+        <div class="ai-chat-window" id="aiChatWindow"></div>
+
+        <div class="ai-samples">
+          <span class="ai-sample" data-target="#aiChatInput">年假怎么申请？</span>
+          <span class="ai-sample" data-target="#aiChatInput">那如果只请半天呢？</span>
+          <span class="ai-sample" data-target="#aiChatInput">迟到一次会扣多少钱？</span>
+          <span class="ai-sample" data-target="#aiChatInput">帮我写一条项目延期通知</span>
+        </div>
+
+        <div class="ai-chat-input">
+          <textarea id="aiChatInput" rows="1" maxlength="{{ max_input }}"
+                    placeholder="输入问题，Enter 发送，Shift + Enter 换行"></textarea>
+          <button type="button" class="btn btn-primary" id="aiChatSend">
+            <i class="fa fa-paper-plane"></i> 发送
+          </button>
+        </div>
+        <div class="ai-hint">单条输入最多 {{ max_input }} 字；回答由大模型生成，请自行核对关键信息。</div>
+      </div>
+    </div>
+
+    <!-- ══ T2：招聘 JD 生成 ══════════════════════════════════════ -->
+    <div class="tab-pane" id="pane-jd">
+      <div class="ai-panel">
+        <div class="row">
+          <div class="col-md-4">
+            <h4 class="ai-section-title">生成招聘 JD</h4>
+            <p class="ai-section-desc">填写岗位信息，AI 按「职责 / 要求 / 薪资」三段输出</p>
+            <form class="ai-form" id="aiJdForm" onsubmit="return false;">
+              <div class="form-group">
+                <label for="aiJdTitle">岗位名称 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="aiJdTitle" maxlength="30"
+                       placeholder="例如：Java 后端开发工程师">
+              </div>
+              <div class="form-group">
+                <label for="aiJdDept">所属部门</label>
+                <input type="text" class="form-control" id="aiJdDept" maxlength="30"
+                       placeholder="例如：技术部">
+              </div>
+              <div class="form-group">
+                <label for="aiJdExp">经验要求</label>
+                <select class="form-control" id="aiJdExp">
+                  <option value="不限">不限</option>
+                  <option value="应届生">应届生</option>
+                  <option value="1-3 年">1-3 年</option>
+                  <option value="3-5 年">3-5 年</option>
+                  <option value="5 年以上">5 年以上</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-primary" id="aiJdBtn">
+                <i class="fa fa-magic"></i> 生成 JD
+              </button>
+            </form>
+            <div class="ai-samples">
+              <span class="ai-sample" data-fill="#aiJdTitle" data-value="产品经理">产品经理</span>
+              <span class="ai-sample" data-fill="#aiJdTitle" data-value="前端开发工程师">前端开发工程师</span>
+              <span class="ai-sample" data-fill="#aiJdTitle" data-value="人事专员">人事专员</span>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="ai-result-head">
+              <span class="ai-result-title">生成结果</span>
+              <button type="button" class="btn btn-default btn-xs" id="aiJdCopy" disabled>
+                <i class="fa fa-copy"></i> 复制
+              </button>
+            </div>
+            <div class="ai-result" id="aiJdResult">
+              <div class="ai-result-empty">
+                <i class="fa fa-file-text-o"></i>
+                <span>填写左侧信息后点击「生成 JD」</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ T3：制度知识库问答 ════════════════════════════════════ -->
+    <div class="tab-pane" id="pane-kb">
+      <div class="ai-panel">
+        <h4 class="ai-section-title">公司制度问答</h4>
+        <p class="ai-section-desc">先从制度库检索相关条款，再交给模型作答；查不到会直接回答「不知道」</p>
+        <div class="form-group">
+          <textarea class="form-control ai-textarea" id="aiKbQuestion" maxlength="{{ max_input }}"
+                    placeholder="例如：迟到多久算旷工？出差报销需要哪些材料？"></textarea>
+        </div>
+        <div class="ai-samples">
+          <span class="ai-sample" data-fill="#aiKbQuestion" data-value="迟到多久算旷工？">迟到多久算旷工？</span>
+          <span class="ai-sample" data-fill="#aiKbQuestion" data-value="出差报销需要哪些材料？">出差报销材料</span>
+          <span class="ai-sample" data-fill="#aiKbQuestion" data-value="年假有几天？">年假天数</span>
+          <span class="ai-sample" data-fill="#aiKbQuestion" data-value="加班有加班费吗？">加班费</span>
+        </div>
+        <p></p>
+        <button type="button" class="btn btn-primary" id="aiKbBtn">
+          <i class="fa fa-search"></i> 提问
+        </button>
+
+        <div class="ai-result-head" style="margin-top:18px;">
+          <span class="ai-result-title">回答</span>
+        </div>
+        <div class="ai-result" id="aiKbResult">
+          <div class="ai-result-empty">
+            <i class="fa fa-book"></i>
+            <span>输入问题后点击「提问」</span>
+          </div>
+        </div>
+        <div class="ai-sources" id="aiKbSources"></div>
+      </div>
+    </div>
+
+    <!-- ══ T4：数据智能点评 ══════════════════════════════════════ -->
+    <div class="tab-pane" id="pane-stat">
+      <div class="ai-panel">
+        <div class="row">
+          <div class="col-md-4">
+            <h4 class="ai-section-title">员工数据点评</h4>
+            <p class="ai-section-desc">读取该员工当月考勤与薪资，生成点评与改进建议</p>
+            <form class="ai-form" onsubmit="return false;">
+              <div class="form-group">
+                <label for="aiStatEmp">员工 <span class="text-danger">*</span></label>
+                <select class="form-control" id="aiStatEmp">
+                  <option value="">请选择员工</option>
+                  {% for e in employees %}
+                  <option value="{{ e.id }}">{{ e.name }} · {{ e.depart.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="aiStatMonth">统计月份</label>
+                <input type="month" class="form-control" id="aiStatMonth">
+              </div>
+              <button type="button" class="btn btn-primary" id="aiStatBtn">
+                <i class="fa fa-magic"></i> 生成点评
+              </button>
+            </form>
+            <div class="ai-hint">仅能选择您数据范围内的员工。</div>
+          </div>
+          <div class="col-md-8">
+            <div class="ai-result-head">
+              <span class="ai-result-title">点评结果</span>
+            </div>
+            <div class="ai-result" id="aiStatResult">
+              <div class="ai-result-empty">
+                <i class="fa fa-line-chart"></i>
+                <span>选择员工与月份后点击「生成点评」</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  "use strict";
+
+  var csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+  var CSRF = csrfInput ? csrfInput.value : "";
+  var MAX_INPUT = {{ max_input }};
+
+  function escapeHtml(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function post(url, data) {
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": CSRF,
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: JSON.stringify(data || {})
+    }).then(function (res) {
+      return res.json();
+    });
+  }
+
+  function showLoading(el, text) {
+    el.classList.remove("has-content");
+    el.innerHTML = '<div class="ai-loading"><i class="fa fa-spinner"></i> ' +
+      escapeHtml(text) + '</div>';
+  }
+
+  function showText(el, text) {
+    el.classList.add("has-content");
+    el.textContent = text;
+  }
+
+  function showError(el, message) {
+    el.classList.remove("has-content");
+    el.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-circle"></i> ' +
+      escapeHtml(message || "请求失败，请稍后再试") + '</div>';
+  }
+
+  function clearResult(el) {
+    el.classList.remove("has-content");
+    el.innerHTML = "";
+  }
+
+  /* ── 示例按钮：填充输入框 ───────────────────────────── */
+  document.querySelectorAll("[data-fill]").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var input = document.querySelector(chip.dataset.fill);
+      if (input) { input.value = chip.dataset.value || ""; input.focus(); }
+    });
+  });
+  document.querySelectorAll("[data-target]").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var input = document.querySelector(chip.dataset.target);
+      if (input) { input.value = chip.textContent.trim(); input.focus(); }
+    });
+  });
+
+  /* ══ 多轮对话 + SSE 流式输出 ═══════════════════════════ */
+  var chatWindow = document.getElementById("aiChatWindow");
+  var chatInput = document.getElementById("aiChatInput");
+  var chatSend = document.getElementById("aiChatSend");
+  var chatClear = document.getElementById("aiChatClear");
+  var chatBusy = false;
+
+  function scrollChat() {
+    if (chatWindow) { chatWindow.scrollTop = chatWindow.scrollHeight; }
+  }
+
+  function appendMessage(role, text) {
+    if (!chatWindow) { return null; }
+    var row = document.createElement("div");
+    row.className = "ai-msg " + role;
+    var avatar = document.createElement("div");
+    avatar.className = "ai-msg-avatar";
+    avatar.innerHTML = role === "user"
+      ? '<i class="fa fa-user"></i>'
+      : '<i class="fa fa-magic"></i>';
+    var bubble = document.createElement("div");
+    bubble.className = "ai-bubble";
+    bubble.textContent = text || "";
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    chatWindow.appendChild(row);
+    scrollChat();
+    return bubble;
+  }
+
+  function resetChat() {
+    if (!chatWindow) { return; }
+    chatWindow.innerHTML = "";
+    appendMessage("bot", "你好，我是 HRMS 智能助手。可以问我人事制度、考勤薪资规则，也可以让我帮你写通知或 JD。");
+  }
+
+  // 渲染服务端保存的历史
+  (function renderHistory() {
+    var node = document.getElementById("ai-chat-history");
+    var history = [];
+    try { history = JSON.parse(node ? node.textContent : "[]") || []; } catch (e) { history = []; }
+    if (!history.length) { resetChat(); return; }
+    history.forEach(function (item) {
+      appendMessage(item.role === "assistant" ? "bot" : "user", item.content);
+    });
+  })();
+
+  function setChatBusy(busy) {
+    chatBusy = busy;
+    if (chatSend) { chatSend.disabled = busy; }
+    if (chatClear) { chatClear.disabled = busy; }
+  }
+
+  function parseSseBlock(block, bubble, state) {
+    var line = block.split("\n").filter(function (l) { return l.indexOf("data:") === 0; })[0];
+    if (!line) { return; }
+    var payload;
+    try { payload = JSON.parse(line.slice(5).trim()); } catch (e) { return; }
+    if (payload.type === "delta") {
+      state.answer += payload.content;
+      bubble.textContent = state.answer;
+      scrollChat();
+    } else if (payload.type === "error") {
+      state.failed = true;
+      bubble.classList.add("is-error");
+      bubble.textContent = payload.msg || "AI 服务暂时不可用，请稍后再试。";
+    }
+  }
+
+  function sendChat() {
+    if (!chatInput || chatBusy) { return; }
+    var text = chatInput.value.trim();
+    if (!text) { return; }
+    if (text.length > MAX_INPUT) {
+      alert("输入内容过长，请控制在 " + MAX_INPUT + " 字以内");
+      return;
+    }
+
+    appendMessage("user", text);
+    chatInput.value = "";
+    chatInput.style.height = "auto";
+    var bubble = appendMessage("bot", "");
+    bubble.classList.add("ai-typing");
+    setChatBusy(true);
+
+    var state = { answer: "", failed: false };
+
+    fetch("{% url 'ai_chat_stream' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": CSRF,
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: JSON.stringify({ message: text })
+    }).then(function (res) {
+      var type = res.headers.get("content-type") || "";
+      if (type.indexOf("application/json") >= 0) {
+        return res.json().then(function (data) {
+          bubble.classList.remove("ai-typing");
+          bubble.classList.add("is-error");
+          bubble.textContent = (data && data.msg) || "请求失败，请稍后再试";
+        });
+      }
+      if (!res.body) { throw new Error("当前浏览器不支持流式输出"); }
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder("utf-8");
+      var buffer = "";
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) { return; }
+          buffer += decoder.decode(result.value, { stream: true });
+          var index;
+          while ((index = buffer.indexOf("\n\n")) >= 0) {
+            var block = buffer.slice(0, index);
+            buffer = buffer.slice(index + 2);
+            parseSseBlock(block, bubble, state);
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function (err) {
+      bubble.classList.remove("ai-typing");
+      bubble.classList.add("is-error");
+      bubble.textContent = "连接失败：" + (err && err.message ? err.message : "请稍后重试");
+    }).finally(function () {
+      bubble.classList.remove("ai-typing");
+      if (!state.answer && !state.failed) {
+        bubble.classList.add("is-error");
+        bubble.textContent = "AI 没有返回内容，请换个问法再试。";
+      }
+      setChatBusy(false);
+      if (chatInput) { chatInput.focus(); }
+    });
+  }
+
+  if (chatSend) { chatSend.addEventListener("click", sendChat); }
+  if (chatInput) {
+    chatInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendChat();
+      }
+    });
+    chatInput.addEventListener("input", function () {
+      this.style.height = "auto";
+      this.style.height = Math.min(this.scrollHeight, 140) + "px";
+    });
+  }
+  if (chatClear) {
+    chatClear.addEventListener("click", function () {
+      post("{% url 'ai_chat_clear' %}", {}).then(resetChat).catch(resetChat);
+    });
+  }
+
+  /* ══ T2 招聘 JD ═══════════════════════════════════════ */
+  var jdBtn = document.getElementById("aiJdBtn");
+  var jdResult = document.getElementById("aiJdResult");
+  var jdCopy = document.getElementById("aiJdCopy");
+
+  if (jdBtn) {
+    jdBtn.addEventListener("click", function () {
+      var title = (document.getElementById("aiJdTitle").value || "").trim();
+      if (!title) {
+        showError(jdResult, "请先填写岗位名称");
+        return;
+      }
+      showLoading(jdResult, "正在生成招聘 JD，请稍候…");
+      jdBtn.disabled = true;
+      jdCopy.disabled = true;
+
+      post("{% url 'ai_jd' %}", {
+        job_title: title,
+        department: (document.getElementById("aiJdDept").value || "").trim(),
+        experience: document.getElementById("aiJdExp").value
+      }).then(function (data) {
+        if (data.code === 0) {
+          showText(jdResult, data.data.content);
+          jdCopy.disabled = false;
+        } else {
+          showError(jdResult, data.msg);
+        }
+      }).catch(function () {
+        showError(jdResult, "网络异常，请稍后再试");
+      }).finally(function () {
+        jdBtn.disabled = false;
+      });
+    });
+  }
+
+  if (jdCopy) {
+    jdCopy.addEventListener("click", function () {
+      var text = jdResult.textContent || "";
+      if (navigator.clipboard && text) {
+        navigator.clipboard.writeText(text).then(function () {
+          jdCopy.innerHTML = '<i class="fa fa-check"></i> 已复制';
+          setTimeout(function () {
+            jdCopy.innerHTML = '<i class="fa fa-copy"></i> 复制';
+          }, 1500);
+        });
+      }
+    });
+  }
+
+  /* ══ T3 制度问答 ══════════════════════════════════════ */
+  var kbBtn = document.getElementById("aiKbBtn");
+  var kbResult = document.getElementById("aiKbResult");
+  var kbSources = document.getElementById("aiKbSources");
+
+  if (kbBtn) {
+    kbBtn.addEventListener("click", function () {
+      var question = (document.getElementById("aiKbQuestion").value || "").trim();
+      if (!question) {
+        showError(kbResult, "请先输入问题");
+        return;
+      }
+      showLoading(kbResult, "正在检索制度库并生成回答…");
+      kbSources.innerHTML = "";
+      kbBtn.disabled = true;
+
+      post("{% url 'ai_ask' %}", { question: question }).then(function (data) {
+        if (data.code !== 0) {
+          showError(kbResult, data.msg);
+          return;
+        }
+        showText(kbResult, data.data.answer);
+        var chips = (data.data.sources || []).map(function (item) {
+          return '<span class="ai-source-chip"><i class="fa fa-book"></i> ' +
+            escapeHtml(item.title) + ' · ' + escapeHtml(item.category) + '</span>';
+        });
+        kbSources.innerHTML = chips.length
+          ? '<span class="text-muted" style="font-size:12px;">参考条款：</span>' + chips.join("")
+          : "";
+      }).catch(function () {
+        showError(kbResult, "网络异常，请稍后再试");
+      }).finally(function () {
+        kbBtn.disabled = false;
+      });
+    });
+  }
+
+  /* ══ T4 数据点评 ══════════════════════════════════════ */
+  var statBtn = document.getElementById("aiStatBtn");
+  var statResult = document.getElementById("aiStatResult");
+  var statMonth = document.getElementById("aiStatMonth");
+
+  if (statMonth && !statMonth.value) {
+    var now = new Date();
+    statMonth.value = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  }
+
+  if (statBtn) {
+    statBtn.addEventListener("click", function () {
+      var employeeId = document.getElementById("aiStatEmp").value;
+      if (!employeeId) {
+        showError(statResult, "请先选择员工");
+        return;
+      }
+      showLoading(statResult, "正在分析考勤与薪资数据…");
+      statBtn.disabled = true;
+
+      post("{% url 'ai_comment' %}", {
+        employee_id: employeeId,
+        month: statMonth ? statMonth.value : ""
+      }).then(function (data) {
+        if (data.code === 0) {
+          showText(statResult, "【" + data.data.employee + " · " + data.data.department +
+            " · " + data.data.month + "】\n\n" + data.data.answer);
+        } else {
+          showError(statResult, data.msg);
+        }
+      }).catch(function () {
+        showError(statResult, "网络异常，请稍后再试");
+      }).finally(function () {
+        statBtn.disabled = false;
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -9,6 +9,7 @@ EMP_LABELS = {
     "薪资管理": "我的薪资",
     "任务管理": "我的任务",
     "公告管理": "公告通知",
+    "AI 助手": "智能助手",
 }
 
 
@@ -24,6 +25,7 @@ def nav_processor(request):
         {"name": "公告管理", "icon": "fa-bullhorn", "url": "/announcement/", "perm": "announcement_view"},
         {"name": "任务管理", "icon": "fa-tasks", "url": "/task/", "perm": "task_view"},
         {"name": "数据统计", "icon": "fa-bar-chart", "url": "/stats/", "perm": "stats_view"},
+        {"name": "AI 助手", "icon": "fa-magic", "url": "/ai/", "perm": "ai_view"},
     ]
 
     permissions = set()

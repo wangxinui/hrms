@@ -1,19 +1,35 @@
 {% extends 'app01/base.html' %}
+{% load static perm_tags %}
 {% block page_title %}员工详情{% endblock %}
 {% block breadcrumb %}
   <li><a href="{% url 'emp_list' %}">员工管理</a></li>
 {% endblock %}
 {% block crumb_name %}{{ emp.name }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app01/css/ai.css' %}">
+{% endblock %}
+
 {% block content %}
+{% can 'ai_view' as can_ai %}
 {% include 'app01/employee/_detail_body.html' %}
 
 <div class="row">
   <div class="col-md-12">
     <div class="btn-group">
       {% if can_edit %}<a href="{% url 'emp_edit' emp.id %}" class="btn btn-info">编辑</a>{% endif %}
+      {% if can_ai %}
+      <button type="button" class="btn btn-primary"
+              onclick="showAiComment({{ emp.id }}, '', '{{ emp.name|escapejs }}')">
+        <i class="fa fa-magic"></i> AI 点评
+      </button>
+      {% endif %}
       <a href="{% url 'emp_list' %}" class="btn btn-default">返回列表</a>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'app01/ai/_comment_modal.html' %}
 {% endblock %}

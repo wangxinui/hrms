@@ -1,13 +1,18 @@
 {% extends 'app01/base.html' %}
-{% load perm_tags %}
+{% load static perm_tags %}
 {% block page_title %}薪资管理{% endblock %}
 {% block breadcrumb %}<li class="active">薪资</li>{% endblock %}
 {% block crumb_name %}薪资列表{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app01/css/ai.css' %}">
+{% endblock %}
 
 {% block content %}
 {% can 'salary_add' as can_add %}
 {% can 'salary_edit' as can_edit %}
 {% can 'salary_delete' as can_delete %}
+{% can 'ai_view' as can_ai %}
 <div class="page-sal">
 
   {% include 'app01/partials/_kpi_cards.html' with kpis=kpis %}
@@ -37,7 +42,7 @@
     <div class="box-body">
       <table class="table table-hover sal-table">
         <thead>
-          <tr><th>月份</th><th>员工</th><th>部门</th><th class="text-right">基本工资</th><th class="text-right">奖金</th><th class="text-right">扣款</th><th class="text-right text-danger">实发</th><th style="width:150px;">操作</th></tr>
+          <tr><th>月份</th><th>员工</th><th>部门</th><th class="text-right">基本工资</th><th class="text-right">奖金</th><th class="text-right">扣款</th><th class="text-right text-danger">实发</th><th style="width:190px;">操作</th></tr>
         </thead>
         <tbody>
           {% for s in pagination.object_list %}
@@ -52,7 +57,13 @@
             <td>
               {% if can_edit %}<a href="{% url 'sal_edit' s.id %}" class="btn btn-xs btn-info">编辑</a>{% endif %}
               {% if can_delete %}<a href="{% url 'sal_delete' s.id %}" class="btn btn-xs btn-danger" onclick="return confirm('确定删除？')">删除</a>{% endif %}
-              {% if not can_edit and not can_delete %}<span class="text-muted">只读</span>{% endif %}
+              {% if can_ai %}
+              <button type="button" class="btn btn-xs btn-primary"
+                      onclick="showAiComment({{ s.employee_id }}, '{{ s.month|date:"Y-m" }}', '{{ s.employee.name|escapejs }}')">
+                <i class="fa fa-magic"></i> AI
+              </button>
+              {% endif %}
+              {% if not can_edit and not can_delete and not can_ai %}<span class="text-muted">只读</span>{% endif %}
             </td>
           </tr>
           {% empty %}
@@ -64,4 +75,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'app01/ai/_comment_modal.html' %}
 {% endblock %}
